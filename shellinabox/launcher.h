@@ -53,7 +53,8 @@
 
 struct LaunchRequest {
   int  service;
-  int  width, height;
+  int  width, height, schost, adv;
+  char credential[64];
   char peerName[128];
   int  urlLength;
   char url[0];

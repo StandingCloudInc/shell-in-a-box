@@ -175,7 +175,7 @@ function VT100(container) {
   }
   this.getUserSettings();
   this.initializeElements(container);
-  this.maxScrollbackLines = 500;
+  this.maxScrollbackLines = 2000;
   this.npar               = 0;
   this.par                = [ ];
   this.isQuestionMark     = false;
@@ -861,7 +861,7 @@ VT100.prototype.initializeElements = function(container) {
 
     this.container.innerHTML   =
                        '<div id="reconnect" style="visibility: hidden">' +
-                         '<input type="button" value="Connect" ' +
+                         '<input type="button" value="Close" ' +
                                 'onsubmit="return false" />' +
                        '</div>' +
                        '<div id="cursize" style="visibility: hidden">' +
@@ -1006,8 +1006,7 @@ VT100.prototype.initializeElements = function(container) {
   this.addListener(this.reconnectBtn.firstChild, 'click',
                    function(vt100) {
                      return function() {
-                       var rc = vt100.reconnect();
-                       vt100.input.focus();
+                       var rc = closeInstead();
                        return rc;
                      }
                    }(this));
@@ -1064,7 +1063,7 @@ VT100.prototype.initializeElements = function(container) {
       // Add a listener for the drop event
       this.addListener(this.scrollable, 'drop', dropEvent(this));
   }
-  
+
   // Initialize the blank terminal window.
   this.currentScreen           = 0;
   this.cursorX                 = 0;
@@ -1131,7 +1130,7 @@ VT100.prototype.repairElements = function(console) {
         for (var span = line.firstChild; span; span = span.nextSibling) {
           var newSpan             = document.createElement(span.tagName);
           newSpan.style.cssText   = span.style.cssText;
-          newSpan.className	  = span.className;
+          newSpan.className       = span.className;
           this.setTextContent(newSpan, this.getTextContent(span));
           newLine.appendChild(newSpan);
         }
@@ -1182,8 +1181,12 @@ VT100.prototype.resizer = function() {
   // still get confused if somebody enters a character that is wider/narrower
   // than normal. This can happen if the browser tries to substitute a
   // characters from a different font.
+  if(this.cursorWidth >0) {
   this.cursor.style.width      = this.cursorWidth  + 'px';
+  }
+  if(this.cursorHeight >0) {
   this.cursor.style.height     = this.cursorHeight + 'px';
+  }
 
   // Adjust height for one pixel padding of the #vt100 element.
   // The latter is necessary to properly display the inactive cursor.
@@ -1542,7 +1545,7 @@ VT100.prototype.insertBlankLine = function(y, color, style) {
     line                 = document.createElement('div');
     var span             = document.createElement('span');
     span.style.cssText   = style;
-    span.className	 = color;
+    span.className       = color;
     this.setTextContent(span, this.spaces(this.terminalWidth));
     line.appendChild(span);
   }
@@ -1556,8 +1559,20 @@ VT100.prototype.insertBlankLine = function(y, color, style) {
 };
 
 VT100.prototype.updateWidth = function() {
-  this.terminalWidth = Math.floor(this.console[this.currentScreen].offsetWidth/
-                                  this.cursorWidth*this.scale);
+  //  if the cursorWidth is zero, something is wrong.  Try to get it some other way.
+  if(this.cursorWidth <=0 ) {
+    if(this.cursor.clientWidth<=0) {
+        // Rats, this.cursor.clientWidth is zero too.  Best guess?
+        this.terminalWidth = 80;
+    } else {
+      // update the size.
+      this.cursorWidth = this.cursor.clientWidth;
+      this.terminalWidth = Math.floor(this.console[this.currentScreen].offsetWidth/this.cursorWidth*this.scale);
+    }
+  } else {
+    this.terminalWidth = Math.floor(this.console[this.currentScreen].offsetWidth/this.cursorWidth*this.scale);
+  }
+
   return this.terminalWidth;
 };
 
@@ -2349,7 +2364,7 @@ VT100.prototype.pasteFnc = function() {
 VT100.prototype.pasteBrowserFnc = function() {
   var clipboard     = prompt("Paste into this box:","");
   if (clipboard != undefined) {
-     return this.keysPressed('' + clipboard);
+    return this.keysPressed('' + clipboard);
   }
 };
 
@@ -2434,7 +2449,7 @@ VT100.prototype.toggleCursorBlinking = function() {
 };
 
 VT100.prototype.about = function() {
-  alert("VT100 Terminal Emulator " + "2.10 (revision 239)" +
+  alert("VT100 Terminal Emulator " + "2.14 (revision 239)" +
         "\nCopyright 2008-2010 by Markus Gutschke\n" +
         "For more information check http://shellinabox.com");
 };
@@ -2744,14 +2759,7 @@ VT100.prototype.handleKey = function(event) {
       case 189: /* -            */ ch = this.applyModifiers(45, event); break;
       case 190: /* .            */ ch = this.applyModifiers(46, event); break;
       case 191: /* /            */ ch = this.applyModifiers(47, event); break;
-      // Conflicts with dead key " on Swiss keyboards
-      //case 192: /* `            */ ch = this.applyModifiers(96, event); break;
-      // Conflicts with dead key " on Swiss keyboards
-      //case 219: /* [            */ ch = this.applyModifiers(91, event); break;
       case 220: /* \            */ ch = this.applyModifiers(92, event); break;
-      // Conflicts with dead key ^ and ` on Swiss keaboards
-      //                         ^ and " on French keyboards
-      //case 221: /* ]            */ ch = this.applyModifiers(93, event); break;
       case 222: /* '            */ ch = this.applyModifiers(39, event); break;
       default:                                                          return;
       }
@@ -2921,16 +2929,6 @@ VT100.prototype.keyDown = function(event) {
   this.lastKeyDownEvent         = undefined;
   this.lastNormalKeyDownEvent   = event;
 
-  // Swiss keyboard conflicts:
-  // [ 59
-  // ] 192
-  // ' 219 (dead key)
-  // { 220
-  // ~ 221 (dead key)
-  // } 223
-  // French keyoard conflicts:
-  // ~ 50 (dead key)
-  // } 107
   var asciiKey                  =
     event.keyCode ==  32                         ||
     event.keyCode >=  48 && event.keyCode <=  57 ||
@@ -2946,10 +2944,11 @@ VT100.prototype.keyDown = function(event) {
     event.keyCode == 226;
   var normalKey                 =
     alphNumKey                                   ||
-    event.keyCode ==  61 ||
+    event.keyCode == 58                          ||
+    event.keyCode >=  60 && event.keyCode <=  64 ||
     event.keyCode == 106 ||
     event.keyCode >= 109 && event.keyCode <= 111 ||
-    event.keyCode >= 186 && event.keyCode <= 191 ||
+    event.keyCode >= 160 && event.keyCode <= 191 ||
     event.keyCode == 222 ||
     event.keyCode == 252;
   try {
@@ -3078,9 +3077,7 @@ VT100.prototype.keyUp = function(event) {
       this.catchModifiersEarly    = true;
       var asciiKey                =
         event.keyCode ==  32                         ||
-        // Conflicts with dead key ~ (code 50) on French keyboards
-        //event.keyCode >=  48 && event.keyCode <=  57 ||
-        event.keyCode >=  48 && event.keyCode <=  49 ||
+        event.keyCode ==  48 || event.keyCode ==  49 ||
         event.keyCode >=  51 && event.keyCode <=  57 ||
         event.keyCode >=  65 && event.keyCode <=  90;
       var alphNumKey              =
@@ -3089,10 +3086,10 @@ VT100.prototype.keyUp = function(event) {
         event.keyCode >=  96 && event.keyCode <= 105;
       var normalKey               =
         alphNumKey                                   ||
-        event.keyCode ==  59 || event.keyCode ==  61 ||
+        event.keyCode >=  58 && event.keyCode <=  64 ||
         event.keyCode == 106 || event.keyCode == 107 ||
         event.keyCode >= 109 && event.keyCode <= 111 ||
-        event.keyCode >= 186 && event.keyCode <= 192 ||
+        event.keyCode >= 160 && event.keyCode <= 192 ||
         event.keyCode >= 219 && event.keyCode <= 223 ||
         event.keyCode == 252;
       var fake                    = [ ];

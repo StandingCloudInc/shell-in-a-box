@@ -63,6 +63,9 @@ struct Session {
   int              height;
   char             *buffered;
   int              len;
+  int              schost;
+  int              adv;
+  const char       *credential;
 };
 
 void addToGraveyard(struct Session *session);

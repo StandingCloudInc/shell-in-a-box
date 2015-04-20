@@ -212,6 +212,11 @@
   left:                 1px;
 }
 
+#vt100 {
+  height:               100%;
+  margin:               0px;
+}
+
 
 @media print {
   #vt100 .scrollback {

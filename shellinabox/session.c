@@ -121,6 +121,9 @@ void initSession(struct Session *session, const char *sessionKey,
   session->height         = 0;
   session->buffered       = NULL;
   session->len            = 0;
+  session->schost         =-1;
+  session->adv            = 0;
+  session->credential     = NULL;
 }
 
 struct Session *newSession(const char *sessionKey, Server *server, URL *url,

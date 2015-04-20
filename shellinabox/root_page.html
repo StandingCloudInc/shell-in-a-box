@@ -47,8 +47,19 @@
     The most up-to-date version of this program is always available from
     http://shellinabox.com
     -->
-    <title>Shell In A Box</title>
-    <script type="text/javascript"><!--
+    <title>Terminal</title>
+    <script type="text/javascript">
+      function closeInstead() {
+        if(navigator.appName=="Microsoft Internet Explorer") {
+          window.opener='X';
+          window.open('','_parent','');
+          window.close();
+        }
+        else {
+          window.close();
+        }
+      }
+
       // Check that our URL is well-formed. Redirect to HTTPS if necessary
       (function() {
         var hasSSL = %s;
@@ -75,14 +86,14 @@
           document.location.replace(url);
         }
       })();
-    --></script>
+    </script>
     <link rel="stylesheet" href="styles.css" type="text/css">
     <style type="text/css">
       body {
         margin: 0px;
       }
     </style>
-    <script type="text/javascript"><!--
+    <script type="text/javascript">
       (function() {
         // We would like to hide overflowing lines as this can lead to
         // visually jarring results if the browser substitutes oversized
@@ -99,7 +110,7 @@
                          '</style>');
         }
       })();
-    --></script>
+    </script>
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
     <script type="text/javascript" src="ShellInABox.js"></script>
   </head>

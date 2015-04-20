@@ -212,6 +212,11 @@
   left:                 1px;
 }
 
+#vt100 {
+  height:               100%;
+  margin:               0px;
+}
+
 [if DEFINES_COLORS]
 /* IE cannot properly handle "inherit" properties. So, the monochrome.css/
  * color.css style sheets cannot work, if we define colors in styles.css.

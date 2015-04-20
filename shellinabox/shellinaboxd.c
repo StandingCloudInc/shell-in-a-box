@@ -120,6 +120,9 @@ static struct UserCSS *userCSSList;
 static const char     *pidfile;
 static sigjmp_buf     jmpenv;
 static volatile int   exiting;
+static int            schostid = -1;
+static int            advbool  = 0;
+static const char     *credential = NULL;
 
 static char *jsonEscape(const char *buf, int len) {
   static const char *hexDigit = "0123456789ABCDEF";
@@ -370,6 +373,22 @@ static int dataHandler(HttpConnection *http, struct Service *service,
   const char *keys        = getFromHashMap(args, "keys");
   const char *rootURL     = getFromHashMap(args, "rooturl");
 
+  if (schostid > -1) {
+    session->schost       = schostid;
+    schostid              = -1;
+  }
+
+  if (advbool > 0) {
+    session->adv          = advbool;
+    advbool               = 0;
+  }
+
+  if (credential != NULL) {
+    session->credential = strdup(credential);
+    free((char*)credential);
+    credential           = NULL;
+  }
+
   // Adjust window dimensions if provided by client
   if (width && height) {
     session->width        = atoi(width);
@@ -612,6 +631,22 @@ static int shellInABoxHttpHandler(HttpConnection *http, void *arg,
   URL *url                = newURL(http, buf, len);
   const HashMap *headers  = httpGetHeaders(http);
   const char *contentType = getFromHashMap(headers, "content-type");
+
+  const char *schost      = getFromHashMap(urlGetArgs(url), "schost");
+  if (schost) {
+    schostid                = atoi(schost);
+  }
+
+  const char *adv         = getFromHashMap(urlGetArgs(url), "adv");
+  if (adv) {
+    advbool               = atoi(adv);
+  }
+
+  const char* tmp = getFromHashMap(urlGetArgs(url), "cred");
+
+  if (credential == NULL && tmp != NULL) {
+    credential = strdup(tmp);
+  }
 
   // Normalize the path info, present the final path element
   const char *pathInfo    = urlGetPathInfo(url);

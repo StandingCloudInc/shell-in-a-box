@@ -522,6 +522,13 @@ int launchChild(int service, struct Session *session, const char *url) {
   request->service     = service;
   request->width       = session->width;
   request->height      = session->height;
+  request->schost      = session->schost;
+  request->adv         = session->adv;
+
+  if (session->credential != NULL) {
+    strncat(request->credential, session->credential, sizeof(request->credential) - 1);
+  }
+
   strncat(request->peerName, httpGetPeerName(session->http),
           sizeof(request->peerName) - 1);
   request->urlLength   = strlen(u);
@@ -1447,7 +1454,7 @@ void setWindowSize(int pty, int width, int height) {
 
 static void childProcess(struct Service *service, int width, int height,
                          struct Utmp *utmp, const char *peerName,
-                         const char *url) {
+                         const char *url, int schost, int adv, const char *credential) {
   // Set initial window size
   setWindowSize(0, width, height);
 
@@ -1464,6 +1471,25 @@ static void childProcess(struct Service *service, int width, int height,
     environment[numEnvVars-2]   = stringPrintf(NULL, "COLUMNS=%d", width);
     environment[numEnvVars-1]   = stringPrintf(NULL, "LINES=%d", height);
   }
+  if (schost > -1) {
+    numEnvVars                 += 1;
+    check(environment           = realloc(environment,
+                                          (numEnvVars + 1)*sizeof(char *)));
+    environment[numEnvVars-1]   = stringPrintf(NULL, "SC_HOSTID=%d", schost);
+  }
+  if (adv > 0) {
+    numEnvVars                 += 1;
+    check(environment           = realloc(environment,
+                                          (numEnvVars + 1)*sizeof(char *)));
+    environment[numEnvVars-1]   = stringPrintf(NULL, "SC_ROOT=%d", adv);
+  }
+  if (credential != NULL) {
+    numEnvVars                 += 1;
+    check(environment           = realloc(environment,
+                                          (numEnvVars + 1)*sizeof(char *)));
+    environment[numEnvVars-1]   = stringPrintf(NULL, "SC_CREDENTIAL=%s", credential);
+  }
+
   for (int i = 0; legalEnv[i]; i++) {
     char *value                 = getenv(legalEnv[i]);
     if (value) {
@@ -1668,7 +1694,7 @@ static void launcherDaemon(int fd) {
                                         services[request.service]->useLogin,
                                         &utmp, request.peerName)) == 0) {
       childProcess(services[request.service], request.width, request.height,
-                   utmp, request.peerName, url);
+                   utmp, request.peerName, url, request.schost, request.adv, request.credential);
       free(url);
       _exit(1);
     } else {
